@@ -139,7 +139,53 @@ Rationale:
 
 ---
 
-## 6. Key Architectural Justifications (Summary)
+## 6. Final Architecture Diagram
+
+```text
+                               +----------------------+
+                               |     Internet Users   |
+                               +----------+-----------+
+                                          |
+                                          v
+                               +----------------------+
+                               |   Ingress VPC (DMZ)  |
+                               |   ALB + WAF Layer    |
+                               +----------+-----------+
+                                          |
+                                          v
+                               +----------------------+
+                               | AWS Transit Gateway  |
+                               |        (Hub)         |
+                               +----+----+----+----+--+
+                                    |    |    |    |
+          +-------------------------+    |    |    +-------------------------+
+          |                              |    |                              |
+          v                              v    v                              v
+   +-------------------+        +-------------------+        +------------------------+
+   |     App VPC       |        |    Egress VPC     |        | Shared Services VPC    |
+   |  Private Apps     |        |   NAT Gateways    |        | CI/CD, Monitoring      |
+   |  Databases        |        |   Internet Exit   |        | Internal Tools         |
+   +---------+---------+        +---------+---------+        +------------------------+
+             |                             |
+             |                             v
+             |                    +----------------------+
+             |                    |   Internet Egress    |
+             |                    +----------------------+
+             |
+             v
+   +------------------------+
+   |  DMZ/Management VPC    |
+   |  SSM Session Manager   |
+   |  Admin Access Zone     |
+   +------------------------+
+
+   Transit Gateway attachments use dedicated /28 subnets in each AZ
+   to keep routing control explicit and operationally clean.
+```
+
+---
+
+## 7. Key Architectural Justifications (Summary)
 
 1. Hub-and-spoke with TGW was selected for centralized governance, lower routing complexity, and enterprise scalability.
 2. Five-VPC segmentation reduces blast radius and enforces clear trust boundaries between traffic types.
@@ -150,7 +196,7 @@ Rationale:
 
 ---
 
-## 7. Conclusion
+## 8. Conclusion
 
 The EduCloud network architecture is intentionally designed from requirements to implementation, following Top-Down Network Design principles. The resulting model supports high availability, secure segmentation, centralized control, and operational automation, while remaining extensible for later phases such as advanced routing policy, on-premises integration, and full validation testing.
 

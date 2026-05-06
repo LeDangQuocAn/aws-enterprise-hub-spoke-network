@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region where the hub Transit Gateway is created."
   type        = string
-  default     = "us-east-1"
+  default     = "ap-southeast-1"
 }
 
 variable "environment" {
@@ -19,7 +19,7 @@ variable "project_name" {
 variable "owner" {
   description = "Owner tag for enterprise accountability."
   type        = string
-  default     = "university-network-team"
+  default     = "group-9"
 }
 
 variable "cost_center" {
@@ -38,4 +38,9 @@ variable "tgw_description" {
   description = "Optional Transit Gateway description."
   type        = string
   default     = "Core hub Transit Gateway for the university enterprise network"
+}
+
+variable "tgw_id" {
+  description = "Existing Transit Gateway ID used for VPC attachments."
+  type        = string
 }
