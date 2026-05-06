@@ -99,13 +99,14 @@ module "spoke_vpcs" {
     "${var.project_name}-${each.key}-tgw-${az}"
   ]
 
-  create_igw              = contains(["ingress", "egress"], each.key)
-  enable_nat_gateway      = false
-  single_nat_gateway      = false
-  one_nat_gateway_per_az  = false
-  enable_dns_hostnames    = true
-  enable_dns_support      = true
-  map_public_ip_on_launch = each.value.workload_mode == "public"
+  create_igw                         = contains(["ingress", "egress"], each.key)
+  enable_nat_gateway                 = false
+  single_nat_gateway                 = false
+  one_nat_gateway_per_az             = false
+  create_multiple_intra_route_tables = true
+  enable_dns_hostnames               = true
+  enable_dns_support                 = true
+  map_public_ip_on_launch            = each.value.workload_mode == "public"
 
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-${each.key}-vpc"
