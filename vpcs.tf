@@ -127,7 +127,7 @@ module "spoke_vpcs" {
 resource "aws_ec2_transit_gateway_vpc_attachment" "vpc" {
   for_each = local.vpc_layout
 
-  transit_gateway_id = var.tgw_id
+  transit_gateway_id = aws_ec2_transit_gateway.core.id
   vpc_id             = module.spoke_vpcs[each.key].vpc_id
   subnet_ids         = module.spoke_vpcs[each.key].intra_subnets
 

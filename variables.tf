@@ -39,8 +39,3 @@ variable "tgw_description" {
   type        = string
   default     = "Core hub Transit Gateway for the university enterprise network"
 }
-
-variable "tgw_id" {
-  description = "Existing Transit Gateway ID used for VPC attachments."
-  type        = string
-}
