@@ -1,0 +1,10 @@
+aws_region    = "us-east-1"
+environment   = "sprint1"
+project_name  = "aws-enterprise-hub-spoke-network"
+owner         = "university-network-team"
+cost_center   = "network-design"
+
+# additional_tags = {
+#   Department = "IT"
+#   Campus     = "Main"
+# }
