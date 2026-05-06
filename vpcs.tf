@@ -13,7 +13,7 @@ locals {
     egress = {
       vpc_newbits       = 8
       vpc_netnum        = 1
-      workload_mode     = "private"
+      workload_mode     = "public"
       workload_newbits  = 2
       workload_netstart = 1
     }
@@ -99,10 +99,10 @@ module "spoke_vpcs" {
     "${var.project_name}-${each.key}-tgw-${az}"
   ]
 
-  create_igw              = false
-  enable_nat_gateway      = false
+  create_igw              = contains(["ingress", "egress"], each.key)
+  enable_nat_gateway      = each.key == "egress"
   single_nat_gateway      = false
-  one_nat_gateway_per_az  = false
+  one_nat_gateway_per_az  = each.key == "egress"
   enable_dns_hostnames    = true
   enable_dns_support      = true
   map_public_ip_on_launch = each.value.workload_mode == "public"
