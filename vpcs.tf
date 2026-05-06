@@ -20,7 +20,7 @@ locals {
     dmz = {
       vpc_newbits       = 8
       vpc_netnum        = 2
-      workload_mode     = "public"
+      workload_mode     = "private"
       workload_newbits  = 2
       workload_netstart = 1
     }
@@ -100,9 +100,9 @@ module "spoke_vpcs" {
   ]
 
   create_igw              = contains(["ingress", "egress"], each.key)
-  enable_nat_gateway      = each.key == "egress"
+  enable_nat_gateway      = false
   single_nat_gateway      = false
-  one_nat_gateway_per_az  = each.key == "egress"
+  one_nat_gateway_per_az  = false
   enable_dns_hostnames    = true
   enable_dns_support      = true
   map_public_ip_on_launch = each.value.workload_mode == "public"
