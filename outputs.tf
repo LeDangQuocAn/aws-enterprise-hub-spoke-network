@@ -22,3 +22,28 @@ output "transit_gateway_default_route_table_propagation" {
   description = "Default propagation setting for the Transit Gateway."
   value       = aws_ec2_transit_gateway.core.default_route_table_propagation
 }
+
+output "app_instance_profile_arn" {
+  description = "ARN of the IAM instance profile for App EC2 instances."
+  value       = aws_iam_instance_profile.app_ec2_profile.arn
+}
+
+output "app_instance_profile_name" {
+  description = "Name of the IAM instance profile for App EC2 instances."
+  value       = aws_iam_instance_profile.app_ec2_profile.name
+}
+
+output "ingress_alb_dns_name" {
+  description = "DNS name of the Internet-facing ALB in Ingress VPC."
+  value       = aws_lb.ingress_alb.dns_name
+}
+
+output "ingress_alb_arn" {
+  description = "ARN of the Internet-facing ALB in Ingress VPC."
+  value       = aws_lb.ingress_alb.arn
+}
+
+output "app_target_group_arn" {
+  description = "ARN of the ALB Target Group for App VPC (target_type=ip)."
+  value       = aws_lb_target_group.app_targets.arn
+}
