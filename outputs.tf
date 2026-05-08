@@ -47,3 +47,17 @@ output "app_target_group_arn" {
   description = "ARN of the ALB Target Group for App VPC (target_type=ip)."
   value       = aws_lb_target_group.app_targets.arn
 }
+
+output "rds_endpoint" {
+  description = "RDS endpoint address for the App DB instance."
+  value       = aws_db_instance.app_db.endpoint
+}
+
+output "app_instance_private_ips" {
+  description = "Mapping of App EC2 instance IDs to private IP addresses."
+  value = {
+    for instance in aws_instance.app_servers :
+    instance.id => instance.private_ip
+  }
+}
+

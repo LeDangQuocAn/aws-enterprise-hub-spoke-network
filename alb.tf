@@ -15,7 +15,7 @@ resource "aws_lb_target_group" "app_targets" {
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = module.spoke_vpcs["app"].vpc_id
+  vpc_id      = module.spoke_vpcs["ingress"].vpc_id
 
   health_check {
     path                = "/"

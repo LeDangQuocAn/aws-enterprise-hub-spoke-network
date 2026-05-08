@@ -24,16 +24,28 @@ resource "aws_nat_gateway" "egress" {
 
 # VPC Routes to Transit Gateway
 # Routes for App, Shared-Services, and DMZ to send 0.0.0.0/0 to TGW (from private route tables)
+# FIX: Use static keys (vpc_name-azN) for for_each to avoid "unknown values" error
+# The route_table_id is looked up dynamically in the resource using az_index
+
+locals {
+  # Create static for_each keys using VPC names and AZ indices (both known at plan time)
+  # Keys: "app-az0", "app-az1", "dmz-az0", "dmz-az1", "shared-services-az0", "shared-services-az1"
+  # This avoids "unknown values in for_each" error from computed route_table_id attributes
+  private_route_tables_to_tgw = merge([
+    for vpc_name in ["app", "dmz", "shared-services"] : {
+      for az_index in range(length(local.vpc_azs)) :
+      "${vpc_name}-az${az_index}" => {
+        vpc_name = vpc_name
+        az_index = az_index
+      }
+    }
+  ]...)
+}
 
 resource "aws_route" "vpc_to_tgw_internet" {
-  for_each = {
-    for vpc_name in ["app", "shared-services", "dmz"] :
-    vpc_name => {
-      route_table_id = module.spoke_vpcs[vpc_name].private_route_table_ids[0]
-    }
-  }
+  for_each = local.private_route_tables_to_tgw
 
-  route_table_id         = each.value.route_table_id
+  route_table_id         = module.spoke_vpcs[each.value.vpc_name].private_route_table_ids[each.value.az_index]
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = aws_ec2_transit_gateway.core.id
 

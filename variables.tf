@@ -39,3 +39,15 @@ variable "tgw_description" {
   type        = string
   default     = "Core hub Transit Gateway for the university enterprise network"
 }
+
+variable "db_username" {
+  description = "Master username for the RDS instance."
+  type        = string
+  default     = "eduadmin"
+}
+
+variable "db_password" {
+  description = "Master password for the RDS instance. Keep this secret; override via tfvars or environment."
+  type        = string
+  sensitive   = true
+}
