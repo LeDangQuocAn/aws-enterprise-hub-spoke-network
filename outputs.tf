@@ -58,6 +58,21 @@ output "vpc_flow_logs_log_group_name" {
   value       = aws_cloudwatch_log_group.vpc_flow_logs.name
 }
 
+output "client_vpn_endpoint_id" {
+  description = "ID of the AWS Client VPN endpoint for remote management."
+  value       = aws_ec2_client_vpn_endpoint.remote_mgmt.id
+}
+
+output "client_vpn_endpoint_dns_name" {
+  description = "DNS name of the AWS Client VPN endpoint for remote management."
+  value       = aws_ec2_client_vpn_endpoint.remote_mgmt.dns_name
+}
+
+output "client_vpn_log_group_name" {
+  description = "CloudWatch Log Group name for AWS Client VPN connection logs."
+  value       = aws_cloudwatch_log_group.client_vpn.name
+}
+
 output "app_instance_private_ips" {
   description = "Mapping of App EC2 instance IDs to private IP addresses."
   value = {
