@@ -53,6 +53,11 @@ output "rds_endpoint" {
   value       = aws_db_instance.app_db.endpoint
 }
 
+output "vpc_flow_logs_log_group_name" {
+  description = "CloudWatch Log Group name for global VPC Flow Logs."
+  value       = aws_cloudwatch_log_group.vpc_flow_logs.name
+}
+
 output "app_instance_private_ips" {
   description = "Mapping of App EC2 instance IDs to private IP addresses."
   value = {
