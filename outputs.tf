@@ -73,6 +73,22 @@ output "client_vpn_log_group_name" {
   value       = aws_cloudwatch_log_group.client_vpn.name
 }
 
+output "vpn_client_cert" {
+  description = "PEM-encoded client certificate for AWS Client VPN."
+  value       = tls_locally_signed_cert.client_vpn_client.cert_pem
+}
+
+output "vpn_client_key" {
+  description = "PEM-encoded private key for AWS Client VPN client authentication."
+  value       = tls_private_key.client_vpn_client.private_key_pem
+  sensitive   = true
+}
+
+output "vpn_root_ca" {
+  description = "PEM-encoded root CA certificate for AWS Client VPN."
+  value       = tls_self_signed_cert.client_vpn_root_ca.cert_pem
+}
+
 output "app_instance_private_ips" {
   description = "Mapping of App EC2 instance IDs to private IP addresses."
   value = {

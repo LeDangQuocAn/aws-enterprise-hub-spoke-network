@@ -47,9 +47,10 @@ resource "tls_cert_request" "client_vpn_server" {
   private_key_pem = tls_private_key.client_vpn_server.private_key_pem
 
   subject {
-    common_name  = "${local.name_prefix}-client-vpn-server"
+    common_name  = "vpn.educloud.internal"
     organization = var.project_name
   }
+  dns_names = ["vpn.educloud.internal"]
 }
 
 resource "tls_locally_signed_cert" "client_vpn_server" {
@@ -168,6 +169,7 @@ resource "aws_ec2_client_vpn_endpoint" "remote_mgmt" {
   server_certificate_arn = aws_acm_certificate.client_vpn_server.arn
   client_cidr_block      = local.client_vpn_supernet
   split_tunnel           = true
+  dns_servers            = ["10.10.0.2"]
   transport_protocol     = "udp"
   vpc_id                 = module.spoke_vpcs["dmz"].vpc_id
   security_group_ids     = [aws_security_group.client_vpn.id]

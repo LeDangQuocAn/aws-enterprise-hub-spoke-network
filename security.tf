@@ -59,6 +59,22 @@ resource "aws_security_group" "app_web_sg" {
     description = "Allow HTTPS from Ingress VPC"
   }
 
+  ingress {
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["10.10.2.0/24"]
+    description = "Allow ICMP from DMZ VPC"
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["10.10.2.0/24"]
+    description = "Allow HTTP from DMZ VPC"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -113,6 +129,14 @@ resource "aws_security_group" "dmz_ssm_sg" {
     protocol    = "tcp"
     cidr_blocks = ["10.10.2.0/24"]
     description = "Allow HTTPS for SSM Session Manager and control plane"
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["172.16.0.0/22"]
+    description = "Allow HTTPS from Client VPN"
   }
 
   egress {
