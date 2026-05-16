@@ -1,49 +1,10 @@
 locals {
-  vpc_azs      = ["ap-southeast-1a", "ap-southeast-1b"]
-  vpc_supernet = "10.10.0.0/16"
-
-  vpc_definitions = {
-    ingress = {
-      vpc_newbits       = 8
-      vpc_netnum        = 0
-      workload_mode     = "public"
-      workload_newbits  = 2
-      workload_netstart = 1
-    }
-    egress = {
-      vpc_newbits       = 8
-      vpc_netnum        = 1
-      workload_mode     = "public"
-      workload_newbits  = 2
-      workload_netstart = 1
-    }
-    dmz = {
-      vpc_newbits       = 8
-      vpc_netnum        = 2
-      workload_mode     = "private"
-      workload_newbits  = 2
-      workload_netstart = 1
-    }
-    shared-services = {
-      vpc_newbits       = 6
-      vpc_netnum        = 1
-      workload_mode     = "private"
-      workload_newbits  = 2
-      workload_netstart = 1
-    }
-    app = {
-      vpc_newbits       = 5
-      vpc_netnum        = 1
-      workload_mode     = "private"
-      workload_newbits  = 3
-      workload_netstart = 1
-    }
-  }
+  name_prefix = "${var.project_name}-${var.environment}"
 
   vpc_with_cidr = {
-    for vpc_name, cfg in local.vpc_definitions :
+    for vpc_name, cfg in var.vpc_definitions :
     vpc_name => merge(cfg, {
-      cidr = cidrsubnet(local.vpc_supernet, cfg.vpc_newbits, cfg.vpc_netnum)
+      cidr = cidrsubnet(var.vpc_supernet, cfg.vpc_newbits, cfg.vpc_netnum)
     })
   }
 
@@ -51,11 +12,11 @@ locals {
     for vpc_name, cfg in local.vpc_with_cidr :
     vpc_name => merge(cfg, {
       workload_subnets = [
-        for az_index in range(length(local.vpc_azs)) :
+        for az_index in range(length(var.vpc_azs)) :
         cidrsubnet(cfg.cidr, cfg.workload_newbits, cfg.workload_netstart + az_index)
       ]
       tgw_subnets = [
-        for az_index in range(length(local.vpc_azs)) :
+        for az_index in range(length(var.vpc_azs)) :
         cidrsubnet(cfg.cidr, 28 - tonumber(split("/", cfg.cidr)[1]), az_index)
       ]
     })
@@ -70,6 +31,20 @@ locals {
   }
 }
 
+resource "aws_ec2_transit_gateway" "core" {
+  description                     = var.tgw_description
+  auto_accept_shared_attachments  = "enable"
+  default_route_table_association = "disable"
+  default_route_table_propagation = "disable"
+  dns_support                     = "enable"
+  multicast_support               = "disable"
+  vpn_ecmp_support                = "enable"
+
+  tags = merge(var.common_tags, {
+    Name = "${local.name_prefix}-tgw"
+  })
+}
+
 module "spoke_vpcs" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
@@ -78,24 +53,24 @@ module "spoke_vpcs" {
 
   name = "${var.project_name}-${each.key}-vpc"
   cidr = each.value.cidr
-  azs  = local.vpc_azs
+  azs  = var.vpc_azs
 
   public_subnets  = each.value.public_subnets
   private_subnets = each.value.private_subnets
   intra_subnets   = each.value.tgw_subnets
 
   public_subnet_names = each.value.workload_mode == "public" ? [
-    for az in local.vpc_azs :
+    for az in var.vpc_azs :
     "${var.project_name}-${each.key}-public-${az}"
   ] : []
 
   private_subnet_names = each.value.workload_mode == "private" ? [
-    for az in local.vpc_azs :
+    for az in var.vpc_azs :
     "${var.project_name}-${each.key}-private-${az}"
   ] : []
 
   intra_subnet_names = [
-    for az in local.vpc_azs :
+    for az in var.vpc_azs :
     "${var.project_name}-${each.key}-tgw-${az}"
   ]
 
@@ -108,7 +83,7 @@ module "spoke_vpcs" {
   enable_dns_support                 = true
   map_public_ip_on_launch            = each.value.workload_mode == "public"
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-${each.key}-vpc"
   })
 
@@ -136,31 +111,7 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "vpc" {
   ipv6_support           = "disable"
   appliance_mode_support = "disable"
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-${each.key}-tgw-attachment"
   })
-}
-
-output "vpc_ids" {
-  description = "Provisioned VPC IDs keyed by VPC name."
-  value = {
-    for vpc_name, mod in module.spoke_vpcs :
-    vpc_name => mod.vpc_id
-  }
-}
-
-output "tgw_subnet_ids" {
-  description = "Dedicated TGW subnet IDs keyed by VPC name."
-  value = {
-    for vpc_name, mod in module.spoke_vpcs :
-    vpc_name => mod.intra_subnets
-  }
-}
-
-output "tgw_attachment_ids" {
-  description = "Transit Gateway attachment IDs keyed by VPC name."
-  value = {
-    for vpc_name, attachment in aws_ec2_transit_gateway_vpc_attachment.vpc :
-    vpc_name => attachment.id
-  }
 }

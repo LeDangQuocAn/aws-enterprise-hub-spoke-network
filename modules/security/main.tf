@@ -1,11 +1,11 @@
-# Security Groups for Defense-in-Depth
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
+}
 
-# Ingress VPC: ALB Security Group
-# Allows public HTTP/HTTPS traffic from internet
 resource "aws_security_group" "ingress_alb_sg" {
   name        = "${var.project_name}-ingress-alb-sg"
   description = "Security group for ALB in Ingress VPC"
-  vpc_id      = module.spoke_vpcs["ingress"].vpc_id
+  vpc_id      = var.vpc_ids["ingress"]
 
   ingress {
     from_port   = 80
@@ -31,17 +31,15 @@ resource "aws_security_group" "ingress_alb_sg" {
     description = "Allow all outbound traffic"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-ingress-alb-sg"
   })
 }
 
-# App VPC: Web Tier Security Group
-# Allows HTTP/HTTPS strictly from Ingress VPC (load balancer)
 resource "aws_security_group" "app_web_sg" {
   name        = "${var.project_name}-app-web-sg"
   description = "Security group for web tier in App VPC"
-  vpc_id      = module.spoke_vpcs["app"].vpc_id
+  vpc_id      = var.vpc_ids["app"]
 
   ingress {
     from_port   = 80
@@ -83,23 +81,21 @@ resource "aws_security_group" "app_web_sg" {
     description = "Allow all outbound traffic"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-web-sg"
   })
 }
 
-# App VPC: Database Tier Security Group
-# Allows MySQL strictly from App VPC (web tier)
 resource "aws_security_group" "app_db_sg" {
   name        = "${var.project_name}-app-db-sg"
   description = "Security group for database tier in App VPC"
-  vpc_id      = module.spoke_vpcs["app"].vpc_id
+  vpc_id      = var.vpc_ids["app"]
 
   ingress {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = ["10.10.8.0/21"]
+    cidr_blocks = [var.app_cidr]
     description = "Allow MySQL from App VPC"
   }
 
@@ -111,17 +107,15 @@ resource "aws_security_group" "app_db_sg" {
     description = "Allow all outbound traffic"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-db-sg"
   })
 }
 
-# DMZ VPC: SSM/Control Plane Security Group
-# Allows HTTPS for SSM Session Manager and control plane communications
 resource "aws_security_group" "dmz_ssm_sg" {
   name        = "${var.project_name}-dmz-ssm-sg"
   description = "Security group for SSM endpoints and control plane in DMZ VPC"
-  vpc_id      = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id      = var.vpc_ids["dmz"]
 
   ingress {
     from_port   = 443
@@ -147,79 +141,106 @@ resource "aws_security_group" "dmz_ssm_sg" {
     description = "Allow all outbound traffic"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-dmz-ssm-sg"
   })
 }
 
-# Modern DMZ: AWS Systems Manager VPC Endpoints (replaces Bastion Host)
-# These endpoints enable secure Session Manager access without requiring a Bastion instance
-
 resource "aws_vpc_endpoint" "ssm" {
-  vpc_id              = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id              = var.vpc_ids["dmz"]
   service_name        = "com.amazonaws.${var.aws_region}.ssm"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.spoke_vpcs["dmz"].private_subnets
+  subnet_ids          = var.private_subnet_ids["dmz"]
   security_group_ids  = [aws_security_group.dmz_ssm_sg.id]
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-dmz-ssm-endpoint"
   })
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id              = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id              = var.vpc_ids["dmz"]
   service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.spoke_vpcs["dmz"].private_subnets
+  subnet_ids          = var.private_subnet_ids["dmz"]
   security_group_ids  = [aws_security_group.dmz_ssm_sg.id]
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-dmz-ssmmessages-endpoint"
   })
 }
 
 resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id              = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id              = var.vpc_ids["dmz"]
   service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.spoke_vpcs["dmz"].private_subnets
+  subnet_ids          = var.private_subnet_ids["dmz"]
   security_group_ids  = [aws_security_group.dmz_ssm_sg.id]
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-dmz-ec2messages-endpoint"
   })
 }
 
-# Outputs for validation and downstream resource attachment
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  name              = "/aws/vpc/enterprise-flow-logs"
+  retention_in_days = 7
 
-output "security_group_ids" {
-  description = "Security group IDs keyed by purpose"
-  value = {
-    ingress_alb = aws_security_group.ingress_alb_sg.id
-    app_web     = aws_security_group.app_web_sg.id
-    app_db      = aws_security_group.app_db_sg.id
-    dmz_ssm     = aws_security_group.dmz_ssm_sg.id
+  tags = merge(var.common_tags, {
+    Name = "/aws/vpc/enterprise-flow-logs"
+  })
+}
+
+data "aws_iam_policy_document" "flow_logs_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
   }
 }
 
-output "ssm_endpoint_ids" {
-  description = "SSM VPC endpoint IDs for DMZ"
-  value = {
-    ssm         = aws_vpc_endpoint.ssm.id
-    ssmmessages = aws_vpc_endpoint.ssmmessages.id
-    ec2messages = aws_vpc_endpoint.ec2messages.id
+resource "aws_iam_role" "flow_logs_role" {
+  name               = "${local.name_prefix}-flow-logs-role"
+  assume_role_policy = data.aws_iam_policy_document.flow_logs_assume_role.json
+
+  tags = merge(var.common_tags, {
+    Name = "${local.name_prefix}-flow-logs-role"
+  })
+}
+
+data "aws_iam_policy_document" "flow_logs_write" {
+  statement {
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+
+    resources = ["${aws_cloudwatch_log_group.vpc_flow_logs.arn}:*"]
   }
 }
 
-output "ssm_endpoint_dns_names" {
-  description = "DNS names of SSM endpoints for reference"
-  value = {
-    ssm         = aws_vpc_endpoint.ssm.dns_entry[0].dns_name
-    ssmmessages = aws_vpc_endpoint.ssmmessages.dns_entry[0].dns_name
-    ec2messages = aws_vpc_endpoint.ec2messages.dns_entry[0].dns_name
-  }
+resource "aws_iam_role_policy" "flow_logs_write" {
+  name   = "${local.name_prefix}-flow-logs-write"
+  role   = aws_iam_role.flow_logs_role.id
+  policy = data.aws_iam_policy_document.flow_logs_write.json
+}
+
+resource "aws_flow_log" "vpc" {
+  for_each = var.vpc_ids
+
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  log_destination_type = "cloud-watch-logs"
+  iam_role_arn         = aws_iam_role.flow_logs_role.arn
+  traffic_type         = "ALL"
+  vpc_id               = each.value
+
+  tags = merge(var.common_tags, {
+    Name = "${local.name_prefix}-${each.key}-flow-logs"
+  })
 }

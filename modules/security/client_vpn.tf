@@ -1,8 +1,8 @@
 locals {
-  client_vpn_supernet = var.vpn_client_cidr
+  vpn_domain = "vpn.${var.base_domain}"
 
   client_vpn_dmz_private_subnets = {
-    for az_index in range(length(local.vpc_azs)) :
+    for az_index in range(length(var.private_subnet_ids["dmz"])) :
     "dmz-az${az_index}" => az_index
   }
 }
@@ -11,7 +11,7 @@ resource "aws_cloudwatch_log_group" "client_vpn" {
   name              = "/aws/vpn/client-vpn/${local.name_prefix}"
   retention_in_days = 7
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "/aws/vpn/client-vpn/${local.name_prefix}"
   })
 }
@@ -99,7 +99,7 @@ resource "aws_acm_certificate" "client_vpn_root_ca" {
     create_before_destroy = true
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-client-vpn-root-ca"
   })
 }
@@ -112,7 +112,7 @@ resource "aws_acm_certificate" "client_vpn_server" {
     create_before_destroy = true
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-client-vpn-server"
   })
 }
@@ -125,7 +125,7 @@ resource "aws_acm_certificate" "client_vpn_client" {
     create_before_destroy = true
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-client-vpn-client"
   })
 }
@@ -133,7 +133,7 @@ resource "aws_acm_certificate" "client_vpn_client" {
 resource "aws_security_group" "client_vpn" {
   name        = "${local.name_prefix}-client-vpn-sg"
   description = "Security group for AWS Client VPN endpoint"
-  vpc_id      = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id      = var.vpc_ids["dmz"]
 
   ingress {
     from_port   = 443
@@ -159,7 +159,7 @@ resource "aws_security_group" "client_vpn" {
     description = "Allow all outbound traffic"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-client-vpn-sg"
   })
 }
@@ -167,11 +167,11 @@ resource "aws_security_group" "client_vpn" {
 resource "aws_ec2_client_vpn_endpoint" "remote_mgmt" {
   description            = "Client VPN endpoint for remote management access"
   server_certificate_arn = aws_acm_certificate.client_vpn_server.arn
-  client_cidr_block      = local.client_vpn_supernet
+  client_cidr_block      = var.vpn_client_cidr
   split_tunnel           = true
-  dns_servers            = ["10.10.0.2"]
+  dns_servers            = [var.client_vpn_dns_server]
   transport_protocol     = "udp"
-  vpc_id                 = module.spoke_vpcs["dmz"].vpc_id
+  vpc_id                 = var.vpc_ids["dmz"]
   security_group_ids     = [aws_security_group.client_vpn.id]
 
   authentication_options {
@@ -184,7 +184,7 @@ resource "aws_ec2_client_vpn_endpoint" "remote_mgmt" {
     cloudwatch_log_group = aws_cloudwatch_log_group.client_vpn.name
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-client-vpn"
   })
 }
@@ -193,22 +193,22 @@ resource "aws_ec2_client_vpn_network_association" "dmz" {
   for_each = local.client_vpn_dmz_private_subnets
 
   client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.remote_mgmt.id
-  subnet_id              = module.spoke_vpcs["dmz"].private_subnets[each.value]
+  subnet_id              = var.private_subnet_ids["dmz"][each.value]
 }
 
 resource "aws_ec2_client_vpn_route" "internal" {
   for_each = local.client_vpn_dmz_private_subnets
 
   client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.remote_mgmt.id
-  destination_cidr_block = "10.10.0.0/16"
-  target_vpc_subnet_id   = module.spoke_vpcs["dmz"].private_subnets[each.value]
+  destination_cidr_block = var.vpc_supernet
+  target_vpc_subnet_id   = var.private_subnet_ids["dmz"][each.value]
 
   depends_on = [aws_ec2_client_vpn_network_association.dmz]
 }
 
 resource "aws_ec2_client_vpn_authorization_rule" "internal" {
   client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.remote_mgmt.id
-  target_network_cidr    = "10.10.0.0/16"
+  target_network_cidr    = var.vpc_supernet
   authorize_all_groups   = true
 
   depends_on = [aws_ec2_client_vpn_network_association.dmz]

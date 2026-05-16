@@ -1,8 +1,8 @@
 resource "aws_db_subnet_group" "app_db_subnets" {
   name       = "${var.project_name}-app-db-subnet-group"
-  subnet_ids = module.spoke_vpcs["app"].private_subnets
+  subnet_ids = var.private_subnet_ids["app"]
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-db-subnet-group"
   })
 }
@@ -16,12 +16,12 @@ resource "aws_db_instance" "app_db" {
   username               = var.db_username
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.app_db_subnets.name
-  vpc_security_group_ids = [aws_security_group.app_db_sg.id]
+  vpc_security_group_ids = [var.app_db_sg_id]
   publicly_accessible    = false
-  multi_az               = false # For production, consider setting multi_az = true
-  skip_final_snapshot    = true  # For student environments to save credits
+  multi_az               = false
+  skip_final_snapshot    = true
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-db"
   })
 

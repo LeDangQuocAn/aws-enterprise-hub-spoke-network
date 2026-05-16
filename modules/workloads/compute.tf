@@ -13,13 +13,44 @@ data "aws_ami" "al2023" {
   }
 }
 
+resource "aws_iam_role" "app_ec2_role" {
+  name = "${var.project_name}-app-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_managed" {
+  role       = aws_iam_role.app_ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "app_ec2_profile" {
+  name = "${var.project_name}-app-ec2-profile"
+  role = aws_iam_role.app_ec2_role.name
+
+  tags = var.common_tags
+}
+
 resource "aws_instance" "app_servers" {
-  count = length(local.vpc_azs)
+  count = length(var.private_subnet_ids["app"])
 
   ami                         = data.aws_ami.al2023.id
   instance_type               = var.instance_type
-  subnet_id                   = module.spoke_vpcs["app"].private_subnets[count.index]
-  vpc_security_group_ids      = [aws_security_group.app_web_sg.id]
+  subnet_id                   = var.private_subnet_ids["app"][count.index]
+  vpc_security_group_ids      = [var.app_web_sg_id]
   iam_instance_profile        = aws_iam_instance_profile.app_ec2_profile.name
   associate_public_ip_address = false
 
@@ -34,13 +65,13 @@ resource "aws_instance" "app_servers" {
     echo "<h1>Hello from EduCloud App Tier</h1><p>Availability Zone: $AZ</p>" > /var/www/html/index.html
   EOF
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-server-${count.index + 1}"
   })
 }
 
 resource "aws_lb_target_group_attachment" "app_tg_attachment" {
-  count = length(local.vpc_azs)
+  count = length(var.private_subnet_ids["app"])
 
   target_group_arn  = aws_lb_target_group.app_targets.arn
   target_id         = aws_instance.app_servers[count.index].private_ip

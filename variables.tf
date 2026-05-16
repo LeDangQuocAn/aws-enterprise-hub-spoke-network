@@ -99,3 +99,70 @@ variable "base_domain" {
   type        = string
   default     = "educloud.internal"
 }
+
+variable "client_vpn_dns_server" {
+  description = "DNS server IP advertised to Client VPN clients."
+  type        = string
+  default     = "10.10.0.2"
+}
+
+variable "vpc_azs" {
+  description = "Availability zones used for all spoke VPCs."
+  type        = list(string)
+  default     = ["ap-southeast-1a", "ap-southeast-1b"]
+}
+
+variable "vpc_supernet" {
+  description = "Supernet used to derive all spoke VPC CIDRs."
+  type        = string
+  default     = "10.10.0.0/16"
+}
+
+variable "vpc_definitions" {
+  description = "Spoke VPC subnetting and workload layout definitions."
+  type = map(object({
+    vpc_newbits       = number
+    vpc_netnum        = number
+    workload_mode     = string
+    workload_newbits  = number
+    workload_netstart = number
+  }))
+
+  default = {
+    ingress = {
+      vpc_newbits       = 8
+      vpc_netnum        = 0
+      workload_mode     = "public"
+      workload_newbits  = 2
+      workload_netstart = 1
+    }
+    egress = {
+      vpc_newbits       = 8
+      vpc_netnum        = 1
+      workload_mode     = "public"
+      workload_newbits  = 2
+      workload_netstart = 1
+    }
+    dmz = {
+      vpc_newbits       = 8
+      vpc_netnum        = 2
+      workload_mode     = "private"
+      workload_newbits  = 2
+      workload_netstart = 1
+    }
+    shared-services = {
+      vpc_newbits       = 6
+      vpc_netnum        = 1
+      workload_mode     = "private"
+      workload_newbits  = 2
+      workload_netstart = 1
+    }
+    app = {
+      vpc_newbits       = 5
+      vpc_netnum        = 1
+      workload_mode     = "private"
+      workload_newbits  = 3
+      workload_netstart = 1
+    }
+  }
+}

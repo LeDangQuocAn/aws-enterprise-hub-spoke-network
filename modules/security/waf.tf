@@ -56,12 +56,7 @@ resource "aws_wafv2_web_acl" "ingress" {
     sampled_requests_enabled   = true
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-ingress-waf"
   })
-}
-
-resource "aws_wafv2_web_acl_association" "ingress_alb" {
-  resource_arn = aws_lb.ingress_alb.arn
-  web_acl_arn  = aws_wafv2_web_acl.ingress.arn
 }

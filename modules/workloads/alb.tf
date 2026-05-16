@@ -1,11 +1,15 @@
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
+}
+
 resource "aws_lb" "ingress_alb" {
   name               = "educloud-ingress-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.ingress_alb_sg.id]
-  subnets            = module.spoke_vpcs["ingress"].public_subnets
+  security_groups    = [var.ingress_alb_sg_id]
+  subnets            = var.public_subnet_ids["ingress"]
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-ingress-alb"
   })
 }
@@ -15,7 +19,7 @@ resource "aws_lb_target_group" "app_targets" {
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = module.spoke_vpcs["ingress"].vpc_id
+  vpc_id      = var.vpc_ids["ingress"]
 
   health_check {
     path                = "/"
@@ -26,7 +30,7 @@ resource "aws_lb_target_group" "app_targets" {
     matcher             = "200-399"
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     Name = "${var.project_name}-app-tg"
   })
 }
@@ -40,4 +44,9 @@ resource "aws_lb_listener" "http" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app_targets.arn
   }
+}
+
+resource "aws_wafv2_web_acl_association" "ingress_alb" {
+  resource_arn = aws_lb.ingress_alb.arn
+  web_acl_arn  = var.web_acl_arn
 }
