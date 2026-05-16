@@ -51,3 +51,51 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "vpn_client_cidr" {
+  description = "CIDR block allocated for Client VPN clients (supernet)."
+  type        = string
+  default     = "172.16.0.0/22"
+}
+
+variable "dmz_cidr" {
+  description = "CIDR block used by the DMZ VPC."
+  type        = string
+  default     = "10.10.2.0/24"
+}
+
+variable "ingress_cidr" {
+  description = "CIDR block used by the Ingress/ALB VPC."
+  type        = string
+  default     = "10.10.0.0/24"
+}
+
+variable "instance_type" {
+  description = "Default EC2 instance type for application servers."
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class for the application database."
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Allocated storage (GB) for the RDS instance."
+  type        = number
+  default     = 20
+}
+
+variable "db_engine_version" {
+  description = "Major engine version for RDS (e.g. MySQL 8.0)."
+  type        = string
+  default     = "8.0"
+}
+
+variable "base_domain" {
+  description = "Base internal domain used for private Route53 records."
+  type        = string
+  default     = "educloud.internal"
+}

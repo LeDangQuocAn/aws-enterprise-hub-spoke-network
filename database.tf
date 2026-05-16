@@ -9,10 +9,10 @@ resource "aws_db_subnet_group" "app_db_subnets" {
 
 resource "aws_db_instance" "app_db" {
   identifier             = "${var.project_name}-app-db"
-  allocated_storage      = 20
+  allocated_storage      = var.db_allocated_storage
   engine                 = "mysql"
-  engine_version         = "8.0"
-  instance_class         = "db.t3.micro"
+  engine_version         = var.db_engine_version
+  instance_class         = var.db_instance_class
   username               = var.db_username
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.app_db_subnets.name

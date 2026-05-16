@@ -17,7 +17,7 @@ resource "aws_instance" "app_servers" {
   count = length(local.vpc_azs)
 
   ami                         = data.aws_ami.al2023.id
-  instance_type               = "t3.micro"
+  instance_type               = var.instance_type
   subnet_id                   = module.spoke_vpcs["app"].private_subnets[count.index]
   vpc_security_group_ids      = [aws_security_group.app_web_sg.id]
   iam_instance_profile        = aws_iam_instance_profile.app_ec2_profile.name

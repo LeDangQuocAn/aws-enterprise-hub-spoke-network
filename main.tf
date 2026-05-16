@@ -12,6 +12,10 @@ locals {
     },
     var.additional_tags
   )
+
+  vpn_domain = "vpn.${var.base_domain}"
+  app_domain = "app.${var.base_domain}"
+  db_domain  = "db.${var.base_domain}"
 }
 
 resource "aws_ec2_transit_gateway" "core" {

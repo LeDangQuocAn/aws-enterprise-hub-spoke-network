@@ -1,5 +1,5 @@
 locals {
-  client_vpn_supernet = "172.16.0.0/22"
+  client_vpn_supernet = var.vpn_client_cidr
 
   client_vpn_dmz_private_subnets = {
     for az_index in range(length(local.vpc_azs)) :
@@ -47,10 +47,10 @@ resource "tls_cert_request" "client_vpn_server" {
   private_key_pem = tls_private_key.client_vpn_server.private_key_pem
 
   subject {
-    common_name  = "vpn.educloud.internal"
+    common_name  = local.vpn_domain
     organization = var.project_name
   }
-  dns_names = ["vpn.educloud.internal"]
+  dns_names = [local.vpn_domain]
 }
 
 resource "tls_locally_signed_cert" "client_vpn_server" {

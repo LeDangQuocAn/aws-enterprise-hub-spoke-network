@@ -1,7 +1,7 @@
 # Shared Services: Internal DNS using Route 53 Private Hosted Zone
 
 resource "aws_route53_zone" "internal" {
-  name = "educloud.internal"
+  name = var.base_domain
 
   vpc {
     vpc_id = module.spoke_vpcs["shared-services"].vpc_id
@@ -34,7 +34,7 @@ resource "aws_route53_zone_association" "ingress" {
 # CNAME pointing to RDS endpoint address
 resource "aws_route53_record" "db" {
   zone_id = aws_route53_zone.internal.zone_id
-  name    = "db.educloud.internal"
+  name    = local.db_domain
   type    = "CNAME"
   ttl     = 300
   records = [aws_db_instance.app_db.address]
@@ -44,7 +44,7 @@ resource "aws_route53_record" "db" {
 # First app instance
 resource "aws_route53_record" "app_server_1" {
   zone_id = aws_route53_zone.internal.zone_id
-  name    = "app.educloud.internal"
+  name    = local.app_domain
   type    = "A"
   ttl     = 300
   records = [aws_instance.app_servers[0].private_ip]
@@ -58,7 +58,7 @@ resource "aws_route53_record" "app_server_1" {
 # Second app instance
 resource "aws_route53_record" "app_server_2" {
   zone_id = aws_route53_zone.internal.zone_id
-  name    = "app.educloud.internal"
+  name    = local.app_domain
   type    = "A"
   ttl     = 300
   records = [aws_instance.app_servers[1].private_ip]
